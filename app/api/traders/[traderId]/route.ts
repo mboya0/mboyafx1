@@ -3,15 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { apiError } from '@/lib/api';
 
 interface Params {
-  params: {
-    traderId: string;
-  };
+  params: Promise<{ traderId: string }>;
 }
 
-export async function GET(request: Request, { params }: Params) {
+export async function GET(request: Request, context: Params) {
+  const { traderId } = await context.params;
+
   try {
     const trader = await prisma.traderProfile.findUnique({
-      where: { userId: params.traderId },
+      where: { userId: traderId },
       include: {
         user: {
           select: { id: true, displayName: true, avatarUrl: true, bio: true },
