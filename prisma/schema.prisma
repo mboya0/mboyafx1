@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AppUser {
+  id             String               @id @default(cuid())
+  derivLoginId   String               @unique
+  displayName    String               @default("Trader")
+  avatarUrl      String?              
+  bio            String?              
+  traderProfile  TraderProfile?
+  bots           Bot[]
+  notifications  Notification[]
+  activities     ActivityFeedItem[]
+  followers      Follower[]           @relation("TraderFollowers")
+  following      Follower[]           @relation("FollowerTargets")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
+
+model TraderProfile {
+  id                 Int               @id @default(autoincrement())
+  userId             String            @unique
+  tagline            String?           
+  riskScore          Int               @default(50)
+  winRate            Float             @default(0.0)
+  roi                Float             @default(0.0)
+  followersCount     Int               @default(0)
+  performanceStats   Json?
+  copySubscriptions  CopySubscription[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  user AppUser @relation(fields: [userId], references: [id])
+}
+
+model Follower {
+  id         Int      @id @default(autoincrement())
+  traderId   String
+  followerId String
+  createdAt  DateTime @default(now())
+
+  trader   AppUser @relation("TraderFollowers", fields: [traderId], references: [id])
+  follower AppUser @relation("FollowerTargets", fields: [followerId], references: [id])
+
+  @@unique([traderId, followerId])
+}
+
+model CopySubscription {
+  id         Int      @id @default(autoincrement())
+  traderId   String
+  followerId String
+  allocation Float    @default(1.0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  trader   AppUser @relation(fields: [traderId], references: [id])
+  follower AppUser @relation(fields: [followerId], references: [id])
+
+  @@unique([traderId, followerId])
+}
+
+model Bot {
+  id               Int               @id @default(autoincrement())
+  ownerId          String
+  name             String
+  description      String?
+  config           Json
+  riskSettings     Json?
+  performanceStats Json?
+  isPublic         Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now())
+
+  owner AppUser @relation(fields: [ownerId], references: [id])
+  backtests BotBacktest[]
+}
+
+model BotTemplate {
+  id          Int      @id @default(autoincrement())
+  authorId    String
+  name        String
+  description String?
+  category    String
+  settings    Json
+  metrics     Json?
+  createdAt   DateTime @default(now())
+
+  author AppUser @relation(fields: [authorId], references: [id])
+}
+
+model BotBacktest {
+  id         Int      @id @default(autoincrement())
+  botId      Int
+  results    Json
+  parameters Json
+  createdAt  DateTime @default(now())
+
+  bot Bot @relation(fields: [botId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  type      String
+  title     String
+  message   String
+  status    String   @default("unread")
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  user AppUser @relation(fields: [userId], references: [id])
+}
+
+model ActivityFeedItem {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  user AppUser @relation(fields: [userId], references: [id])
+}
